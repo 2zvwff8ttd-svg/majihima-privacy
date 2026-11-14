@@ -10,7 +10,14 @@
 <meta property="og:image" content="https://2zvwff8ttd-svg.github.io/majihima-privacy/icon.png">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
-<meta name="apple-itunes-app" content="app-id=6819988938">
+<script>
+  // 上に出る「開く」の帯（スマートバナー）からアプリを開いたときも、招待コードを渡す
+  (function () {
+    var t = new URLSearchParams(location.search).get('t') || '';
+    var arg = /^[0-9a-f]{32}$/.test(t) ? ', app-argument=majihima://invite/' + t : '';
+    document.write('<meta name="apple-itunes-app" content="app-id=6819988938' + arg + '">');
+  })();
+</script>
 <style>
   :root { --text: #1C1B22; --sub: #6B6A75; --primary: #6C4CF5; --bg: #FAFAFC; }
   * { box-sizing: border-box; }
