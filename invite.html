@@ -14,7 +14,10 @@
   // 上に出る「開く」の帯（スマートバナー）からアプリを開いたときも、招待コードを渡す
   (function () {
     var t = new URLSearchParams(location.search).get('t') || '';
-    var arg = /^[0-9a-f]{32}$/.test(t) ? ', app-argument=majihima://invite/' + t : '';
+    // ここで暇を入れたことがあれば、そのキーも渡す（アプリを入れたあと、上の帯から開いても引き継げるように）
+    var g = null;
+    try { g = /^[0-9a-f]{32}$/.test(t) ? localStorage.getItem('majihima.guest.' + t) : null; } catch (e) {}
+    var arg = /^[0-9a-f]{32}$/.test(t) ? ', app-argument=majihima://invite/' + t + (g && /^[0-9a-f]{32}$/.test(g) ? '?g=' + g : '') : '';
     document.write('<meta name="apple-itunes-app" content="app-id=6819988938' + arg + '">');
   })();
 </script>
@@ -38,7 +41,7 @@
   .dayh { text-align: center; font-size: .72rem; font-weight: 800; color: var(--sub); line-height: 1.2; padding-bottom: 2px; }
   .dayh small { display: block; font-weight: 500; }
   .hour { font-size: .62rem; color: var(--sub); text-align: right; padding-right: 3px; transform: translateY(-6px); }
-  .cell { height: 38px; border-radius: 8px; background: var(--field); border: 2px solid transparent; padding: 0; position: relative; }
+  .cell { touch-action: manipulation; height: 38px; border-radius: 8px; background: var(--field); border: 2px solid transparent; padding: 0; position: relative; }
   .cell.host { border-color: #C9BCFB; }
   .cell.mine { background: var(--primary); }
   .cell.both { background: var(--hot); border-color: var(--hot); }
@@ -351,7 +354,10 @@
       })
       .catch(function (e) {
         var m = String(e.message || '');
-        $('err').textContent = m === 'too_many' ? '今日はこのリンクから送れる数の上限に達しました。また明日お試しください。' : '送れませんでした。通信環境を確認して、もう一度お試しください。';
+        $('err').textContent = m === 'too_many' ? '今日はこのリンクから送れる数の上限に達しました。また明日お試しください。'
+          : m === 'invalid_week' ? '週が変わりました。ページを開き直して、もう一度入れてください。'
+          : m === 'invalid_invite' ? 'このリンクは使えなくなりました。招待した人に、もう一度リンクを送ってもらってください。'
+          : '送れませんでした。通信環境を確認して、もう一度お試しください。';
         show('err', true);
         $('send').disabled = false;
       });
