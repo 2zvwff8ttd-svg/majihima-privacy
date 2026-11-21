@@ -2,11 +2,11 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>マジ暇で友達になろう</title>
-<meta name="description" content="タップするとマジ暇が開いて、そのまま友達になれます。">
-<meta property="og:title" content="マジ暇で友達になろう">
-<meta property="og:description" content="タップするとマジ暇が開いて、そのまま友達になれます。">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>マジ暇で暇な時間を合わせよう</title>
+<meta name="description" content="アプリがなくても、暇な時間をタップするだけで重なる時間がわかります。">
+<meta property="og:title" content="マジ暇で暇な時間を合わせよう">
+<meta property="og:description" content="アプリがなくても、暇な時間をタップするだけで重なる時間がわかります。">
 <meta property="og:image" content="https://2zvwff8ttd-svg.github.io/majihima-privacy/icon.png">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
@@ -19,48 +19,261 @@
   })();
 </script>
 <style>
-  :root { --text: #1C1B22; --sub: #6B6A75; --primary: #6C4CF5; --bg: #FAFAFC; }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
-    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
-    background: var(--bg); color: var(--text); padding: 24px 16px;
-  }
-  main { width: 100%; max-width: 360px; text-align: center; }
-  img { width: 96px; height: 96px; border-radius: 22px; box-shadow: 0 10px 30px rgba(108,76,245,.25); }
-  h1 { font-size: 1.35rem; margin: 20px 0 8px; }
-  p { color: var(--sub); line-height: 1.7; margin: 0 0 24px; font-size: .95rem; }
-  a.button { display: block; padding: 15px; border-radius: 14px; font-weight: 700; text-decoration: none; margin-top: 12px; }
-  a.primary { background: var(--primary); color: #fff; }
-  a.secondary { background: #EFE9FF; color: var(--primary); }
-  .note { font-size: .8rem; margin-top: 20px; }
-  .error { color: #C2410C; }
+  :root { --text: #1C1B22; --sub: #6B6A75; --primary: #6C4CF5; --soft: #EFE9FF; --bg: #FAFAFC; --field: #F1F0F6; --border: #ECEAF3; --hot: #C2410C; --hotSoft: #FFEEE6; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif; background: var(--bg); color: var(--text); }
+  main { max-width: 440px; margin: 0 auto; padding: 24px 16px 48px; }
+  .head { display: flex; align-items: center; gap: 12px; }
+  .avatar { width: 56px; height: 56px; border-radius: 28px; background: var(--soft); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 22px; overflow: hidden; flex: none; }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; }
+  h1 { font-size: 1.2rem; margin: 0; line-height: 1.4; }
+  .sub { color: var(--sub); font-size: .85rem; line-height: 1.6; }
+  .card { background: #fff; border: 1px solid var(--border); border-radius: 20px; padding: 16px; margin-top: 16px; }
+  .tabs { display: flex; gap: 8px; margin: 4px 0 12px; }
+  .tab { flex: 1; padding: 9px; border-radius: 12px; border: none; background: var(--field); color: var(--sub); font-weight: 700; font-size: .9rem; }
+  .tab.on { background: var(--soft); color: var(--primary); }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: .75rem; color: var(--sub); margin-bottom: 8px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; vertical-align: -2px; margin-right: 4px; }
+  .grid { display: grid; grid-template-columns: 26px repeat(7, 1fr); gap: 3px; }
+  .dayh { text-align: center; font-size: .72rem; font-weight: 800; color: var(--sub); line-height: 1.2; padding-bottom: 2px; }
+  .dayh small { display: block; font-weight: 500; }
+  .hour { font-size: .62rem; color: var(--sub); text-align: right; padding-right: 3px; transform: translateY(-6px); }
+  .cell { height: 38px; border-radius: 8px; background: var(--field); border: 2px solid transparent; padding: 0; position: relative; }
+  .cell.host { border-color: #C9BCFB; }
+  .cell.mine { background: var(--primary); }
+  .cell.both { background: var(--hot); border-color: var(--hot); }
+  .cell.both::after { content: "🔥"; font-size: 13px; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+  .cell.past { background: repeating-linear-gradient(135deg, #F4F3F8 0 4px, #E9E8EF 4px 8px); border-color: transparent; opacity: .55; }
+  .appline { margin-top: 14px; text-align: center; font-size: .85rem; color: var(--sub); }
+  .appline a { color: var(--primary); font-weight: 700; text-decoration: none; }
+  input[type=text] { width: 100%; font-size: 16px; padding: 13px 14px; border-radius: 14px; border: 1px solid var(--border); background: var(--field); margin-top: 12px; }
+  .btn { display: block; width: 100%; padding: 15px; border-radius: 14px; font-weight: 800; font-size: 1rem; text-align: center; text-decoration: none; border: none; margin-top: 12px; }
+  .primary { background: var(--primary); color: #fff; }
+  .primary:disabled { opacity: .4; }
+  .secondary { background: var(--soft); color: var(--primary); }
+  .result { background: var(--hotSoft); border-radius: 16px; padding: 14px; margin-top: 12px; }
+  .result b { color: var(--hot); }
+  .error { color: var(--hot); font-size: .85rem; margin-top: 8px; }
+  .small { font-size: .75rem; color: var(--sub); margin-top: 10px; line-height: 1.6; }
+  .hidden { display: none; }
 </style>
 </head>
 <body>
 <main>
-  <img src="icon.png" alt="マジ暇">
-  <h1 id="title">マジ暇で友達になろう</h1>
-  <p id="lead">「マジ暇で開く」をタップすると、アプリが開いて<br>そのまま友達になれます。</p>
-  <a id="open" class="button primary" href="#">マジ暇で開く</a>
-  <a class="button secondary" href="https://apps.apple.com/app/id6819988938">App Storeでダウンロード</a>
-  <p class="note">まだアプリを入れていない人は、ダウンロードして登録したあと、<br>もう一度このリンクをタップしてください。</p>
+  <div class="head">
+    <div class="avatar" id="avatar">暇</div>
+    <div>
+      <h1 id="title">マジ暇で暇な時間を合わせよう</h1>
+      <div class="sub" id="lead">読み込み中…</div>
+    </div>
+  </div>
+
+  <div class="card hidden" id="paintCard">
+    <div style="font-weight:800">アプリがなくても、ここで暇な時間を入れられます</div>
+    <div class="sub" style="margin:4px 0 10px">暇なマスをタップ。<span id="hostName2">相手</span>さんと重なるところに🔥が出ます。</div>
+    <div class="tabs"><button class="tab on" id="tab0">今週</button><button class="tab" id="tab1">来週</button></div>
+    <div class="legend">
+      <span><i style="border:2px solid #C9BCFB"></i><span id="hostLegend">相手</span>さんが暇</span>
+      <span><i style="background:var(--primary)"></i>あなたが暇</span>
+      <span><i style="background:var(--hot)"></i>重なる</span>
+    </div>
+    <div class="grid" id="grid"></div>
+    <input type="text" id="name" maxlength="20" placeholder="あなたの名前（例: ゆい）" autocomplete="nickname">
+    <button class="btn primary" id="send" disabled>送る</button>
+    <div class="error hidden" id="err"></div>
+    <div class="small">入れた時間は<span id="hostName3">相手</span>さんに届きます。名前と空き時間以外は送りません。30日で消えます。</div>
+  </div>
+
+  <div class="appline" id="appCard">マジ暇を持っている人は <a id="openApp" href="#">アプリで開く →</a></div>
+
+  <div class="card hidden" id="doneCard">
+    <div style="font-weight:800">送りました！</div>
+    <div class="result" id="resultText"></div>
+    <div class="sub" style="margin-top:12px">アプリを入れると、<span id="hostName4">相手</span>さんと友達になって、ほかの友達とも重なる時間がわかります。今入れた暇も、そのまま引き継げます。</div>
+    <a class="btn primary" href="https://apps.apple.com/app/id6819988938">App Storeで入れる（無料）</a>
+    <a class="btn secondary" id="openApp2" href="#">入れたあとは、ここをタップ</a>
+  </div>
+
+  <div class="card hidden" id="fallbackCard">
+    <div class="sub">マジ暇は、友達と暇な時間が重なる日がすぐわかるアプリです。</div>
+    <a class="btn primary" href="https://apps.apple.com/app/id6819988938">App Storeで入れる（無料）</a>
+    <a class="btn secondary" id="openApp3" href="#">マジ暇で開く</a>
+  </div>
+
+  <div class="card hidden" id="badCard">
+    <div style="font-weight:800">このリンクは使えません</div>
+    <div class="sub">招待した人に、もう一度リンクを送ってもらってください。</div>
+  </div>
 </main>
 <script>
-  (function () {
-    var token = new URLSearchParams(location.search).get('t') || '';
-    var open = document.getElementById('open');
-    if (!/^[0-9a-f]{32}$/.test(token)) {
-      document.getElementById('title').textContent = 'このリンクは使えません';
-      document.getElementById('lead').innerHTML = '<span class="error">招待した人に、もう一度リンクを送ってもらってください。</span>';
-      open.style.display = 'none';
-      return;
+(function () {
+  var SUPABASE_URL = location.hostname === 'localhost' ? location.origin : 'https://vbtmdzpwvmevkwowskbw.supabase.co';
+  var ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZidG1kenB3dm1ldmt3b3dza2J3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA4MjgxMTksImV4cCI6MjEwNjQwNDExOX0.3QFEwYAxLhLIpOWo4Ucb1o8irnRWLAxpLFejl8DlQXI';
+  var token = new URLSearchParams(location.search).get('t') || '';
+  var $ = function (id) { return document.getElementById(id); };
+  var DAYS = ['月', '火', '水', '木', '金', '土', '日'];
+  var ROW_START = 8 * 60, ROW = 120, ROWS = 8; // 8:00〜24:00 を2時間ずつ
+
+  if (!/^[0-9a-f]{32}$/.test(token)) {
+    $('appCard').classList.add('hidden');
+    $('badCard').classList.remove('hidden');
+    $('lead').textContent = '';
+    return;
+  }
+  var storeKey = 'majihima.guest.' + token;
+  var claimKey = null;
+  try { claimKey = localStorage.getItem(storeKey); } catch (e) {}
+  function appUrl() { return 'majihima://invite/' + token + (claimKey ? '?g=' + claimKey : ''); }
+  $('openApp').href = appUrl();
+  $('openApp2').href = appUrl();
+  $('openApp3').href = appUrl();
+  // 自動でアプリを開こうとすると、アプリがない人のSafariに「アドレスが無効」と出てしまうので、ボタンだけにする
+
+  function rpc(name, body) {
+    return fetch(SUPABASE_URL + '/rest/v1/rpc/' + name, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: ANON_KEY, Authorization: 'Bearer ' + ANON_KEY },
+      body: JSON.stringify(body),
+    }).then(function (r) {
+      return r.json().then(function (j) { if (!r.ok) throw new Error((j && j.message) || 'error'); return j; });
+    });
+  }
+
+  // 日本時間の今日（曜日 1=月〜7=日）
+  var jstNow = new Date(Date.now() + 9 * 3600 * 1000);
+  var todayDow = ((jstNow.getUTCDay() + 6) % 7) + 1;
+  var nowMinute = jstNow.getUTCHours() * 60 + jstNow.getUTCMinutes();
+
+  var weeks = [], week = 0, hostName = '相手';
+  var painted = [{}, {}]; // 週ごとに "day-row" -> true
+
+  function overlapsCell(ranges, day, row) {
+    var s = ROW_START + row * ROW, e = s + ROW;
+    return ranges.some(function (r) { return r.day === day && r.start < e && s < r.end; });
+  }
+  function isPast(day, row) {
+    if (week !== 0) return false;
+    if (day < todayDow) return true;
+    return day === todayDow && ROW_START + (row + 1) * ROW <= nowMinute;
+  }
+  function dateLabel(day) {
+    var ws = weeks[week] && weeks[week].week_start;
+    if (!ws) return '';
+    var d = new Date(ws + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + day - 1);
+    return (d.getUTCMonth() + 1) + '/' + d.getUTCDate();
+  }
+  function render() {
+    var g = $('grid');
+    g.innerHTML = '<div></div>';
+    for (var d = 1; d <= 7; d++) g.insertAdjacentHTML('beforeend', '<div class="dayh">' + DAYS[d - 1] + '<small>' + dateLabel(d) + '</small></div>');
+    var hostRanges = (weeks[week] && weeks[week].ranges) || [];
+    for (var row = 0; row < ROWS; row++) {
+      g.insertAdjacentHTML('beforeend', '<div class="hour">' + (8 + row * 2) + '</div>');
+      for (var day = 1; day <= 7; day++) {
+        var key = day + '-' + row;
+        var host = overlapsCell(hostRanges, day, row);
+        var mine = !!painted[week][key];
+        var cls = 'cell' + (isPast(day, row) ? ' past' : mine && host ? ' both' : mine ? ' mine' : host ? ' host' : '');
+        g.insertAdjacentHTML('beforeend', '<button class="' + cls + '" data-k="' + key + '" aria-label="' + DAYS[day - 1] + '曜 ' + (8 + row * 2) + '時から"></button>');
+      }
     }
-    var appUrl = 'majihima://invite/' + token;
-    open.href = appUrl;
-    // 開いた瞬間に一度だけアプリを開こうとする（入っていなければ何も起きず、このページが残る）
-    setTimeout(function () { location.href = appUrl; }, 300);
-  })();
+    var any = Object.keys(painted[week]).length > 0;
+    $('send').disabled = !any || !$('name').value.trim();
+  }
+  $('grid').addEventListener('click', function (e) {
+    var k = e.target.getAttribute && e.target.getAttribute('data-k');
+    if (!k) return;
+    var p = k.split('-');
+    if (isPast(+p[0], +p[1])) return;
+    if (painted[week][k]) delete painted[week][k]; else painted[week][k] = true;
+    render();
+  });
+  $('name').addEventListener('input', render);
+  function setWeek(w) {
+    if (!weeks[w]) return;
+    week = w;
+    $('tab0').classList.toggle('on', w === 0);
+    $('tab1').classList.toggle('on', w === 1);
+    render();
+  }
+  $('tab0').onclick = function () { setWeek(0); };
+  $('tab1').onclick = function () { setWeek(1); };
+
+  function toRanges() {
+    var out = [];
+    for (var day = 1; day <= 7; day++) {
+      var cur = null;
+      for (var row = 0; row < ROWS; row++) {
+        if (painted[week][day + '-' + row]) {
+          var s = ROW_START + row * ROW;
+          if (cur && cur.end === s) cur.end = s + ROW; else { cur = { day: day, start: s, end: s + ROW }; out.push(cur); }
+        } else cur = null;
+      }
+    }
+    return out;
+  }
+
+  $('send').onclick = function () {
+    $('send').disabled = true;
+    $('err').classList.add('hidden');
+    rpc('submit_invite_guest', { invite_token: token, guest_name: $('name').value.trim(), target_week: weeks[week].week_start, ranges: toRanges() })
+      .then(function (res) {
+        claimKey = res.claim_key;
+        try { localStorage.setItem(storeKey, claimKey); } catch (e) {}
+        $('openApp').href = appUrl();
+        $('openApp2').href = appUrl();
+        var ov = res.overlaps || [];
+        $('resultText').innerHTML = ov.length
+          ? hostName + 'さんと重なる時間：<br><b>' + ov.map(escapeHtml).join('<br>') + '</b>'
+          : 'まだ' + hostName + 'さんと重なる時間はありません。' + hostName + 'さんには届いているので、合わせてくれるかも。';
+        $('paintCard').classList.add('hidden');
+        $('appCard').classList.add('hidden');
+        $('doneCard').classList.remove('hidden');
+        window.scrollTo(0, 0);
+      })
+      .catch(function (e) {
+        var m = String(e.message || '');
+        $('err').textContent = m === 'too_many' ? '今日はこのリンクから送れる数の上限に達しました。また明日お試しください。' : '送れませんでした。通信環境を確認して、もう一度お試しください。';
+        $('err').classList.remove('hidden');
+        $('send').disabled = false;
+      });
+  };
+
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  rpc('invite_web_preview', { invite_token: token })
+    .then(function (p) {
+      if (!p) {
+        $('appCard').classList.add('hidden');
+        $('badCard').classList.remove('hidden');
+        $('lead').textContent = '';
+        return;
+      }
+      hostName = p.display_name;
+      ['hostLegend', 'hostName2', 'hostName3', 'hostName4'].forEach(function (id) { $(id).textContent = hostName; });
+      $('title').textContent = hostName + 'さんから招待が届きました';
+      $('lead').textContent = 'マジ暇で、暇な時間が重なる日を見つけよう';
+      if (p.avatar_url && /^https:\/\//.test(p.avatar_url)) {
+        $('avatar').innerHTML = '<img alt="" src="' + escapeHtml(p.avatar_url) + '">';
+      } else {
+        $('avatar').textContent = hostName.slice(0, 1);
+      }
+      weeks = p.weeks || [];
+      $('paintCard').classList.remove('hidden');
+      // 今週がほぼ終わっていたら、来週から見せる
+      var left = 0;
+      for (var d = 1; d <= 7; d++) for (var r = 0; r < ROWS; r++) if (!isPast(d, r)) left++;
+      setWeek(left < 8 && weeks.length > 1 ? 1 : 0);
+    })
+    .catch(function () {
+      // 読み込めないときは、アプリへの案内だけ出す
+      $('title').textContent = '友達からマジ暇の招待が届きました';
+      $('lead').textContent = 'アプリで開くと、そのまま友達になれます';
+      $('appCard').classList.add('hidden');
+      $('fallbackCard').classList.remove('hidden');
+    });
+})();
 </script>
 </body>
 </html>
