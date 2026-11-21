@@ -56,6 +56,11 @@
   .error { color: var(--hot); font-size: .85rem; margin-top: 8px; }
   .small { font-size: .75rem; color: var(--sub); margin-top: 10px; line-height: 1.6; }
   .hidden { display: none; }
+  .grid { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  .cell.off { background: #E6E5EC; opacity: .35; }
+  .tab .count { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--primary); color: #fff; font-size: .72rem; line-height: 18px; }
+  .note { background: var(--field); border-radius: 12px; padding: 10px 12px; font-size: .8rem; color: var(--sub); line-height: 1.6; margin-bottom: 10px; }
+  .link { background: none; border: none; color: var(--primary); font-weight: 700; font-size: .9rem; padding: 10px; display: block; margin: 6px auto 0; }
 </style>
 </head>
 <body>
@@ -70,26 +75,29 @@
 
   <div class="card hidden" id="paintCard">
     <div style="font-weight:800">アプリがなくても、ここで暇な時間を入れられます</div>
-    <div class="sub" style="margin:4px 0 10px">暇なマスをタップ。<span id="hostName2">相手</span>さんと重なるところに🔥が出ます。</div>
+    <div class="sub" style="margin:4px 0 10px">暇なマスをタップ（少し押したまま指を動かすと、まとめて塗れます）。<span class="hostName">相手</span>さんと重なるところに🔥が出ます。</div>
+    <div class="note hidden" id="hostEmpty"><span class="hostName">相手</span>さんはまだ暇を入れていません。あなたの暇は届くので、<span class="hostName">相手</span>さんが合わせてくれるかも。</div>
     <div class="tabs"><button class="tab on" id="tab0">今週</button><button class="tab" id="tab1">来週</button></div>
     <div class="legend">
-      <span><i style="border:2px solid #C9BCFB"></i><span id="hostLegend">相手</span>さんが暇</span>
+      <span><i style="border:2px solid #C9BCFB"></i><span class="hostName">相手</span>さんが暇</span>
       <span><i style="background:var(--primary)"></i>あなたが暇</span>
       <span><i style="background:var(--hot)"></i>重なる</span>
     </div>
     <div class="grid" id="grid"></div>
+    <div class="small" style="margin-top:6px">「24」は深夜0時〜2時（日曜は翌週とまたぐので入れられません）</div>
     <input type="text" id="name" maxlength="20" placeholder="あなたの名前（例: ゆい）" autocomplete="nickname">
     <button class="btn primary" id="send" disabled>送る</button>
     <div class="error hidden" id="err"></div>
-    <div class="small">入れた時間は<span id="hostName3">相手</span>さんに届きます。名前と空き時間以外は送りません。30日で消えます。</div>
+    <div class="small">今週と来週の両方に入れたら、まとめて送られます。入れた時間は<span class="hostName">相手</span>さんに届きます。名前と空き時間以外は送りません。30日で消えます。</div>
   </div>
 
   <div class="appline" id="appCard">マジ暇を持っている人は <a id="openApp" href="#">アプリで開く →</a></div>
 
   <div class="card hidden" id="doneCard">
-    <div style="font-weight:800">送りました！</div>
+    <div style="font-weight:800" id="doneTitle">送りました！</div>
     <div class="result" id="resultText"></div>
-    <div class="sub" style="margin-top:12px">アプリを入れると、<span id="hostName4">相手</span>さんと友達になって、ほかの友達とも重なる時間がわかります。今入れた暇も、そのまま引き継げます。</div>
+    <button class="link" id="redo">入れ直す</button>
+    <div class="sub" style="margin-top:6px">アプリを入れると、<span class="hostName">相手</span>さんと友達になって、ほかの友達とも重なる時間がわかります。今入れた暇も、そのまま引き継げます。</div>
     <a class="btn primary" href="https://apps.apple.com/app/id6819988938">App Storeで入れる（無料）</a>
     <a class="btn secondary" id="openApp2" href="#">入れたあとは、ここをタップ</a>
   </div>
@@ -111,12 +119,14 @@
   var ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZidG1kenB3dm1ldmt3b3dza2J3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA4MjgxMTksImV4cCI6MjEwNjQwNDExOX0.3QFEwYAxLhLIpOWo4Ucb1o8irnRWLAxpLFejl8DlQXI';
   var token = new URLSearchParams(location.search).get('t') || '';
   var $ = function (id) { return document.getElementById(id); };
+  var show = function (id, on) { $(id).classList.toggle('hidden', !on); };
   var DAYS = ['月', '火', '水', '木', '金', '土', '日'];
-  var ROW_START = 8 * 60, ROW = 120, ROWS = 8; // 8:00〜24:00 を2時間ずつ
+  // 8:00〜24:00 を2時間ずつ（8行）＋ 深夜0〜2時（翌日の0:00〜2:00として保存する）
+  var ROW_START = 8 * 60, ROW = 120, NORMAL_ROWS = 8, ROWS = 9, NIGHT = 8;
 
   if (!/^[0-9a-f]{32}$/.test(token)) {
-    $('appCard').classList.add('hidden');
-    $('badCard').classList.remove('hidden');
+    show('appCard', false);
+    show('badCard', true);
     $('lead').textContent = '';
     return;
   }
@@ -124,9 +134,8 @@
   var claimKey = null;
   try { claimKey = localStorage.getItem(storeKey); } catch (e) {}
   function appUrl() { return 'majihima://invite/' + token + (claimKey ? '?g=' + claimKey : ''); }
-  $('openApp').href = appUrl();
-  $('openApp2').href = appUrl();
-  $('openApp3').href = appUrl();
+  function updateAppLinks() { ['openApp', 'openApp2', 'openApp3'].forEach(function (id) { $(id).href = appUrl(); }); }
+  updateAppLinks();
   // 自動でアプリを開こうとすると、アプリがない人のSafariに「アドレスが無効」と出てしまうので、ボタンだけにする
 
   function rpc(name, body) {
@@ -138,8 +147,9 @@
       return r.json().then(function (j) { if (!r.ok) throw new Error((j && j.message) || 'error'); return j; });
     });
   }
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
-  // 日本時間の今日（曜日 1=月〜7=日）
+  // 日本時間の今日（曜日 1=月〜7=日）と、いまの分
   var jstNow = new Date(Date.now() + 9 * 3600 * 1000);
   var todayDow = ((jstNow.getUTCDay() + 6) % 7) + 1;
   var nowMinute = jstNow.getUTCHours() * 60 + jstNow.getUTCMinutes();
@@ -147,15 +157,23 @@
   var weeks = [], week = 0, hostName = '相手';
   var painted = [{}, {}]; // 週ごとに "day-row" -> true
 
-  function overlapsCell(ranges, day, row) {
-    var s = ROW_START + row * ROW, e = s + ROW;
-    return ranges.some(function (r) { return r.day === day && r.start < e && s < r.end; });
+  // セルが表す時間（深夜の行は翌日の 0:00〜2:00）。日曜の深夜は翌週になるので使えない
+  function slot(day, row) {
+    if (row === NIGHT) return day === 7 ? null : { day: day + 1, start: 0, end: ROW };
+    var s = ROW_START + row * ROW;
+    return { day: day, start: s, end: s + ROW };
   }
-  function isPast(day, row) {
-    if (week !== 0) return false;
-    if (day < todayDow) return true;
-    return day === todayDow && ROW_START + (row + 1) * ROW <= nowMinute;
+  function isPast(w, day, row) {
+    var sl = slot(day, row);
+    if (!sl || w !== 0) return false;
+    return sl.day < todayDow || (sl.day === todayDow && sl.end <= nowMinute);
   }
+  function hostFree(w, day, row) {
+    var sl = slot(day, row);
+    var ranges = (weeks[w] && weeks[w].ranges) || [];
+    return !!sl && ranges.some(function (r) { return r.day === sl.day && r.start < sl.end && sl.start < r.end; });
+  }
+  function count(w) { return Object.keys(painted[w]).length; }
   function dateLabel(day) {
     var ws = weeks[week] && weeks[week].week_start;
     if (!ws) return '';
@@ -165,30 +183,104 @@
   }
   function render() {
     var g = $('grid');
-    g.innerHTML = '<div></div>';
-    for (var d = 1; d <= 7; d++) g.insertAdjacentHTML('beforeend', '<div class="dayh">' + DAYS[d - 1] + '<small>' + dateLabel(d) + '</small></div>');
-    var hostRanges = (weeks[week] && weeks[week].ranges) || [];
+    var html = '<div></div>';
+    for (var d = 1; d <= 7; d++) html += '<div class="dayh">' + DAYS[d - 1] + '<small>' + dateLabel(d) + '</small></div>';
     for (var row = 0; row < ROWS; row++) {
-      g.insertAdjacentHTML('beforeend', '<div class="hour">' + (8 + row * 2) + '</div>');
+      html += '<div class="hour">' + (8 + row * 2) + '</div>';
       for (var day = 1; day <= 7; day++) {
         var key = day + '-' + row;
-        var host = overlapsCell(hostRanges, day, row);
-        var mine = !!painted[week][key];
-        var cls = 'cell' + (isPast(day, row) ? ' past' : mine && host ? ' both' : mine ? ' mine' : host ? ' host' : '');
-        g.insertAdjacentHTML('beforeend', '<button class="' + cls + '" data-k="' + key + '" aria-label="' + DAYS[day - 1] + '曜 ' + (8 + row * 2) + '時から"></button>');
+        var cls = 'cell';
+        if (!slot(day, row)) cls += ' off';
+        else if (isPast(week, day, row)) cls += ' past';
+        else {
+          var host = hostFree(week, day, row), mine = !!painted[week][key];
+          cls += mine && host ? ' both' : mine ? ' mine' : host ? ' host' : '';
+        }
+        html += '<button class="' + cls + '" data-k="' + key + '" aria-label="' + DAYS[day - 1] + '曜 ' + (8 + row * 2) + '時から"></button>';
       }
     }
-    var any = Object.keys(painted[week]).length > 0;
-    $('send').disabled = !any || !$('name').value.trim();
+    g.innerHTML = html;
+    [0, 1].forEach(function (w) {
+      var n = count(w);
+      $('tab' + w).innerHTML = (w === 0 ? '今週' : '来週') + (n ? '<span class="count">' + n + '</span>' : '');
+    });
+    $('send').disabled = count(0) + count(1) === 0 || !$('name').value.trim();
+  }
+
+  // タップで1マス。少し押したまま指を動かすと、通ったマスをまとめて塗る（塗ってあるマスから始めると消す）
+  function canPaint(key) {
+    var p = key.split('-');
+    return !!slot(+p[0], +p[1]) && !isPast(week, +p[0], +p[1]);
+  }
+  function setCell(key, on) {
+    if (!canPaint(key)) return;
+    if (on) painted[week][key] = true; else delete painted[week][key];
+  }
+  var drag = null, suppressClick = false;
+  function keyAt(x, y) {
+    var el = document.elementFromPoint(x, y);
+    return el && el.parentNode === $('grid') ? el.getAttribute('data-k') : null;
+  }
+  function dragTo(key) {
+    if (!drag || !key || key === drag.last) return;
+    drag.last = key;
+    setCell(key, drag.on);
+    render();
   }
   $('grid').addEventListener('click', function (e) {
+    if (suppressClick) { suppressClick = false; return; }
     var k = e.target.getAttribute && e.target.getAttribute('data-k');
-    if (!k) return;
-    var p = k.split('-');
-    if (isPast(+p[0], +p[1])) return;
-    if (painted[week][k]) delete painted[week][k]; else painted[week][k] = true;
+    if (!k || !canPaint(k)) return;
+    setCell(k, !painted[week][k]);
     render();
   });
+  // 指（スマホ）
+  var touch = null;
+  $('grid').addEventListener('touchstart', function (e) {
+    var t = e.touches[0], key = keyAt(t.clientX, t.clientY);
+    if (!key || !canPaint(key)) return;
+    touch = { x: t.clientX, y: t.clientY, key: key, timer: setTimeout(function () {
+      drag = { on: !painted[week][key], last: null };
+      dragTo(key);
+    }, 180) };
+  }, { passive: true });
+  $('grid').addEventListener('touchmove', function (e) {
+    if (!touch) return;
+    var t = e.touches[0];
+    if (!drag) {
+      // 押してすぐ動かしたときは、ふつうのスクロール
+      if (Math.abs(t.clientX - touch.x) + Math.abs(t.clientY - touch.y) > 8) { clearTimeout(touch.timer); touch = null; }
+      return;
+    }
+    e.preventDefault();
+    dragTo(keyAt(t.clientX, t.clientY));
+  }, { passive: false });
+  function endTouch() {
+    if (touch) clearTimeout(touch.timer);
+    if (drag) suppressClick = true;
+    touch = null;
+    drag = null;
+  }
+  $('grid').addEventListener('touchend', endTouch);
+  $('grid').addEventListener('touchcancel', function () { endTouch(); suppressClick = false; });
+  // マウス（パソコン）: 押したまま動かすと塗る
+  $('grid').addEventListener('mousedown', function (e) {
+    var k = e.target.getAttribute && e.target.getAttribute('data-k');
+    if (!k || !canPaint(k)) return;
+    drag = { on: !painted[week][k], last: k, moved: false };
+  });
+  $('grid').addEventListener('mousemove', function (e) {
+    if (!drag || !(e.buttons & 1)) return;
+    var k = keyAt(e.clientX, e.clientY);
+    if (!k || k === drag.last) return;
+    if (!drag.moved) { drag.moved = true; setCell(drag.last, drag.on); }
+    dragTo(k);
+  });
+  window.addEventListener('mouseup', function () {
+    if (drag && drag.moved) suppressClick = true;
+    if (!touch) drag = null;
+  });
+
   $('name').addEventListener('input', render);
   function setWeek(w) {
     if (!weeks[w]) return;
@@ -200,79 +292,135 @@
   $('tab0').onclick = function () { setWeek(0); };
   $('tab1').onclick = function () { setWeek(1); };
 
-  function toRanges() {
-    var out = [];
-    for (var day = 1; day <= 7; day++) {
-      var cur = null;
-      for (var row = 0; row < ROWS; row++) {
-        if (painted[week][day + '-' + row]) {
-          var s = ROW_START + row * ROW;
-          if (cur && cur.end === s) cur.end = s + ROW; else { cur = { day: day, start: s, end: s + ROW }; out.push(cur); }
-        } else cur = null;
-      }
+  // 塗ったマス → 保存用（曜日ごとに連続した時間をまとめる）
+  function toRanges(w) {
+    var byDay = {};
+    for (var day = 1; day <= 7; day++) for (var row = 0; row < ROWS; row++) {
+      if (!painted[w][day + '-' + row]) continue;
+      var sl = slot(day, row);
+      if (sl) (byDay[sl.day] = byDay[sl.day] || []).push(sl);
     }
+    var out = [];
+    Object.keys(byDay).forEach(function (d) {
+      byDay[d].sort(function (a, b) { return a.start - b.start; }).forEach(function (r) {
+        var last = out[out.length - 1];
+        if (last && last.day === r.day && last.end === r.start) last.end = r.end;
+        else out.push({ day: r.day, start: r.start, end: r.end });
+      });
+    });
     return out;
   }
+  // 保存してあった時間 → マス（入れ直すとき用）
+  function fromRanges(w, ranges) {
+    painted[w] = {};
+    ranges.forEach(function (r) {
+      for (var day = 1; day <= 7; day++) for (var row = 0; row < ROWS; row++) {
+        var sl = slot(day, row);
+        if (sl && sl.day === r.day && r.start < sl.end && sl.start < r.end && !isPast(w, day, row)) painted[w][day + '-' + row] = true;
+      }
+    });
+  }
+
+  function showDone(overlaps, again) {
+    $('doneTitle').textContent = again ? '前に送った内容' : '送りました！';
+    $('resultText').innerHTML = overlaps.length
+      ? escapeHtml(hostName) + 'さんと重なる時間：<br><b>' + overlaps.map(escapeHtml).join('<br>') + '</b>'
+      : 'まだ' + escapeHtml(hostName) + 'さんと重なる時間はありません。' + escapeHtml(hostName) + 'さんには届いているので、合わせてくれるかも。';
+    show('paintCard', false);
+    show('appCard', false);
+    show('doneCard', true);
+  }
+  $('redo').onclick = function () {
+    show('doneCard', false);
+    show('paintCard', true);
+    show('appCard', true);
+    render();
+  };
 
   $('send').onclick = function () {
     $('send').disabled = true;
-    $('err').classList.add('hidden');
-    rpc('submit_invite_guest', { invite_token: token, guest_name: $('name').value.trim(), target_week: weeks[week].week_start, ranges: toRanges() })
+    show('err', false);
+    var payload = [0, 1].filter(function (w) { return weeks[w]; }).map(function (w) { return { week_start: weeks[w].week_start, ranges: toRanges(w) }; });
+    rpc('submit_invite_guest', { invite_token: token, guest_name: $('name').value.trim(), weeks: payload, prev_key: claimKey })
       .then(function (res) {
         claimKey = res.claim_key;
         try { localStorage.setItem(storeKey, claimKey); } catch (e) {}
-        $('openApp').href = appUrl();
-        $('openApp2').href = appUrl();
-        var ov = res.overlaps || [];
-        $('resultText').innerHTML = ov.length
-          ? hostName + 'さんと重なる時間：<br><b>' + ov.map(escapeHtml).join('<br>') + '</b>'
-          : 'まだ' + hostName + 'さんと重なる時間はありません。' + hostName + 'さんには届いているので、合わせてくれるかも。';
-        $('paintCard').classList.add('hidden');
-        $('appCard').classList.add('hidden');
-        $('doneCard').classList.remove('hidden');
+        updateAppLinks();
+        showDone(res.overlaps || [], false);
         window.scrollTo(0, 0);
       })
       .catch(function (e) {
         var m = String(e.message || '');
         $('err').textContent = m === 'too_many' ? '今日はこのリンクから送れる数の上限に達しました。また明日お試しください。' : '送れませんでした。通信環境を確認して、もう一度お試しください。';
-        $('err').classList.remove('hidden');
+        show('err', true);
         $('send').disabled = false;
       });
   };
 
-  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function fallback() {
+    // 読み込めないときは、アプリへの案内だけ出す
+    $('title').textContent = '友達からマジ暇の招待が届きました';
+    $('lead').textContent = 'アプリで開くと、そのまま友達になれます';
+    show('appCard', false);
+    show('paintCard', false);
+    show('fallbackCard', true);
+  }
 
   rpc('invite_web_preview', { invite_token: token })
     .then(function (p) {
       if (!p) {
-        $('appCard').classList.add('hidden');
-        $('badCard').classList.remove('hidden');
+        show('appCard', false);
+        show('badCard', true);
         $('lead').textContent = '';
         return;
       }
       hostName = p.display_name;
-      ['hostLegend', 'hostName2', 'hostName3', 'hostName4'].forEach(function (id) { $(id).textContent = hostName; });
+      Array.prototype.forEach.call(document.querySelectorAll('.hostName'), function (el) { el.textContent = hostName; });
       $('title').textContent = hostName + 'さんから招待が届きました';
       $('lead').textContent = 'マジ暇で、暇な時間が重なる日を見つけよう';
-      if (p.avatar_url && /^https:\/\//.test(p.avatar_url)) {
-        $('avatar').innerHTML = '<img alt="" src="' + escapeHtml(p.avatar_url) + '">';
-      } else {
-        $('avatar').textContent = hostName.slice(0, 1);
-      }
+      if (p.avatar_url && /^https:\/\//.test(p.avatar_url)) $('avatar').innerHTML = '<img alt="" src="' + escapeHtml(p.avatar_url) + '">';
+      else $('avatar').textContent = hostName.slice(0, 1);
       weeks = p.weeks || [];
-      $('paintCard').classList.remove('hidden');
+      show('hostEmpty', !weeks.some(function (w) { return w.ranges && w.ranges.length; }));
+      show('paintCard', true);
       // 今週がほぼ終わっていたら、来週から見せる
       var left = 0;
-      for (var d = 1; d <= 7; d++) for (var r = 0; r < ROWS; r++) if (!isPast(d, r)) left++;
+      for (var d = 1; d <= 7; d++) for (var r = 0; r < ROWS; r++) if (slot(d, r) && !isPast(0, d, r)) left++;
       setWeek(left < 8 && weeks.length > 1 ? 1 : 0);
+      // 前にこのリンクから送っていたら、その内容を見せる（入れ直せる）
+      if (!claimKey) return;
+      rpc('invite_guest_entry', { invite_token: token, key: claimKey }).then(function (entry) {
+        if (!entry || entry.claimed) {
+          // アプリで受け取り済み・消えたものは忘れて、新しく入れられるようにする
+          claimKey = null;
+          try { localStorage.removeItem(storeKey); } catch (e) {}
+          updateAppLinks();
+          return;
+        }
+        $('name').value = entry.name;
+        (entry.weeks || []).forEach(function (sent) {
+          [0, 1].forEach(function (w) { if (weeks[w] && weeks[w].week_start === sent.week_start) fromRanges(w, sent.ranges || []); });
+        });
+        render();
+        if (count(0) + count(1) === 0) return;
+        // 重なる時間（いまの相手の空き時間で計算し直す）
+        var hm = function (m) { return Math.floor(m / 60) + ':' + ('0' + (m % 60)).slice(-2); };
+        var ovl = [];
+        [0, 1].forEach(function (w) {
+          var hostRanges = (weeks[w] && weeks[w].ranges) || [];
+          toRanges(w).forEach(function (g) {
+            hostRanges.forEach(function (h) {
+              var st = Math.max(g.start, h.start), en = Math.min(g.end, h.end);
+              if (g.day === h.day && st < en) ovl.push({ w: w, day: g.day, st: st, en: en });
+            });
+          });
+        });
+        ovl = ovl.sort(function (a, b) { return a.w - b.w || a.day - b.day || a.st - b.st; })
+          .map(function (o) { return (o.w === 1 ? '来週の' : '') + DAYS[o.day - 1] + ' ' + hm(o.st) + '〜' + hm(o.en); });
+        showDone(ovl, true);
+      }).catch(function () {});
     })
-    .catch(function () {
-      // 読み込めないときは、アプリへの案内だけ出す
-      $('title').textContent = '友達からマジ暇の招待が届きました';
-      $('lead').textContent = 'アプリで開くと、そのまま友達になれます';
-      $('appCard').classList.add('hidden');
-      $('fallbackCard').classList.remove('hidden');
-    });
+    .catch(fallback);
 })();
 </script>
 </body>
