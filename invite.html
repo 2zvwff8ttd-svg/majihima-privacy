@@ -184,25 +184,36 @@
     d.setUTCDate(d.getUTCDate() + day - 1);
     return (d.getUTCMonth() + 1) + '/' + d.getUTCDate();
   }
-  function render() {
-    var g = $('grid');
+  // 表は週を切り替えたときだけ作り直す。塗るときは色（class）だけ変える
+  // （なぞっている途中で部品を作り直すと、iPhoneのSafariでは指の動きが届かなくなるため）
+  var builtWeek = -1;
+  function cellClass(day, row) {
+    var cls = 'cell';
+    if (!slot(day, row)) return cls + ' off';
+    if (isPast(week, day, row)) return cls + ' past';
+    var host = hostFree(week, day, row), mine = !!painted[week][day + '-' + row];
+    return cls + (mine && host ? ' both' : mine ? ' mine' : host ? ' host' : '');
+  }
+  function buildGrid() {
     var html = '<div></div>';
     for (var d = 1; d <= 7; d++) html += '<div class="dayh">' + DAYS[d - 1] + '<small>' + dateLabel(d) + '</small></div>';
     for (var row = 0; row < ROWS; row++) {
       html += '<div class="hour">' + (8 + row * 2) + '</div>';
       for (var day = 1; day <= 7; day++) {
-        var key = day + '-' + row;
-        var cls = 'cell';
-        if (!slot(day, row)) cls += ' off';
-        else if (isPast(week, day, row)) cls += ' past';
-        else {
-          var host = hostFree(week, day, row), mine = !!painted[week][key];
-          cls += mine && host ? ' both' : mine ? ' mine' : host ? ' host' : '';
-        }
-        html += '<button class="' + cls + '" data-k="' + key + '" aria-label="' + DAYS[day - 1] + '曜 ' + (8 + row * 2) + '時から"></button>';
+        html += '<button class="cell" data-k="' + day + '-' + row + '" aria-label="' + DAYS[day - 1] + '曜 ' + (8 + row * 2) + '時から"></button>';
       }
     }
-    g.innerHTML = html;
+    $('grid').innerHTML = html;
+    builtWeek = weeks[week] ? week : -1; // 週のデータが届く前に作ったときは、届いたあとに日付入りで作り直す
+  }
+  function render() {
+    if (builtWeek !== week) buildGrid();
+    var cells = $('grid').querySelectorAll('button[data-k]');
+    for (var i = 0; i < cells.length; i++) {
+      var p = cells[i].getAttribute('data-k').split('-');
+      var cls = cellClass(+p[0], +p[1]);
+      if (cells[i].className !== cls) cells[i].className = cls;
+    }
     [0, 1].forEach(function (w) {
       var n = count(w);
       $('tab' + w).innerHTML = (w === 0 ? '今週' : '来週') + (n ? '<span class="count">' + n + '</span>' : '');
